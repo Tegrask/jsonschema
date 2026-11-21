@@ -6,7 +6,7 @@ from unittest import TestCase
 
 from jsonschema import FormatChecker, ValidationError
 from jsonschema.exceptions import FormatError
-from jsonschema.validators import Draft4Validator
+from jsonschema.validators import Draft3Validator, Draft4Validator
 
 BOOM = ValueError("Boom!")
 BANG = ZeroDivisionError("Bang!")
@@ -89,3 +89,29 @@ class TestFormatChecker(TestCase):
             repr(checker),
             "<FormatChecker checkers=['bar', 'baz', 'foo']>",
         )
+
+
+class TestDraft3TimeFormat(TestCase):
+    def setUp(self):
+        self.validator = Draft3Validator(
+            {"format": "time"},
+            format_checker=Draft3Validator.FORMAT_CHECKER,
+        )
+
+    def test_it_accepts_canonical_times(self):
+        for instance in ["00:00:00", "12:34:56", "23:59:59"]:
+            with self.subTest(instance=instance):
+                self.assertTrue(self.validator.is_valid(instance))
+
+    def test_it_rejects_unpadded_components(self):
+        for instance in ["1:2:3", "01:2:03", "01:02:3"]:
+            with self.subTest(instance=instance):
+                self.assertFalse(self.validator.is_valid(instance))
+
+    def test_it_rejects_non_ascii_digits(self):
+        for instance in ["01:0\u0662:03", "\u0660\u0661:02:03"]:
+            with self.subTest(instance=instance):
+                self.assertFalse(self.validator.is_valid(instance))
+
+    def test_it_ignores_non_strings(self):
+        self.assertTrue(self.validator.is_valid(123))
